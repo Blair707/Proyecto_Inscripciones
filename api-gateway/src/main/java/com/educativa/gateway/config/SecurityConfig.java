@@ -23,9 +23,9 @@ public class SecurityConfig {
             .csrf(ServerHttpSecurity.CsrfSpec::disable)
             .authorizeExchange(exchanges -> exchanges
                 .pathMatchers("/actuator/health").permitAll()
-                .pathMatchers("/services/**/health").permitAll()
-                .pathMatchers("/services/**/swagger-ui/**").permitAll()
-                .pathMatchers("/services/**/api-docs/**").permitAll()
+                .pathMatchers("/services/*/health").permitAll()
+                .pathMatchers("/services/*/swagger-ui/**").permitAll()
+                .pathMatchers("/services/*/api-docs/**").permitAll()
                 .pathMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                 .anyExchange().authenticated()
             )
