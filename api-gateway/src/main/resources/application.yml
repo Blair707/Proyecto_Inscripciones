@@ -65,6 +65,14 @@ spring:
             - TokenRelay=
             - AddRequestHeader=X-Gateway-Source, api-gateway
 
+
+        - id: resumen-service
+          uri: ${INSCRIPCIONES_SERVICE_URL:http://localhost:8080}
+          predicates:
+            - Path=/api/inscripciones/*/resumen/**
+          filters:
+            - TokenRelay=
+            - AddRequestHeader=X-Gateway-Source, api-gateway
         - id: inscripciones-health
           uri: ${INSCRIPCIONES_SERVICE_URL:http://localhost:8080}
           predicates:
