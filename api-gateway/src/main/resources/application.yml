@@ -1,0 +1,93 @@
+server:
+  port: 8090
+
+spring:
+  application:
+    name: api-gateway
+
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          jwk-set-uri: https://DuocAzurexAlonso.b2clogin.com/DuocAzurexAlonso.onmicrosoft.com/B2C_1_signupsignin/discovery/v2.0/keys
+          issuer-uri: https://DuocAzurexAlonso.b2clogin.com/4ba371a5-2d60-4c43-bc38-a63974911ffb/v2.0/
+      client:
+        registration:
+          b2c:
+            client-id: cd54f9ac-4fed-48bc-921c-6014aab02776
+            client-secret: ${AZURE_CLIENT_SECRET}
+            authorization-grant-type: authorization_code
+            redirect-uri: http://localhost:8090/login/oauth2/code/b2c
+            scope: openid, offline_access
+        provider:
+          b2c:
+            authorization-uri: https://DuocAzurexAlonso.b2clogin.com/DuocAzurexAlonso.onmicrosoft.com/B2C_1_signupsignin/oauth2/v2.0/authorize
+            token-uri: https://DuocAzurexAlonso.b2clogin.com/DuocAzurexAlonso.onmicrosoft.com/B2C_1_signupsignin/oauth2/v2.0/token
+            jwk-set-uri: https://DuocAzurexAlonso.b2clogin.com/DuocAzurexAlonso.onmicrosoft.com/B2C_1_signupsignin/discovery/v2.0/keys
+
+  cloud:
+    gateway:
+      globalcors:
+        corsConfigurations:
+          '[/**]':
+            allowedOrigins: "*"
+            allowedMethods:
+              - GET
+              - POST
+              - PUT
+              - PATCH
+              - DELETE
+              - OPTIONS
+            allowedHeaders: "*"
+
+      routes:
+        - id: cursos-service
+          uri: ${INSCRIPCIONES_SERVICE_URL:http://localhost:8080}
+          predicates:
+            - Path=/api/cursos/**
+          filters:
+            - TokenRelay=
+            - AddRequestHeader=X-Gateway-Source, api-gateway
+
+        - id: estudiantes-service
+          uri: ${INSCRIPCIONES_SERVICE_URL:http://localhost:8080}
+          predicates:
+            - Path=/api/estudiantes/**
+          filters:
+            - TokenRelay=
+            - AddRequestHeader=X-Gateway-Source, api-gateway
+
+        - id: inscripciones-service
+          uri: ${INSCRIPCIONES_SERVICE_URL:http://localhost:8080}
+          predicates:
+            - Path=/api/inscripciones/**
+          filters:
+            - TokenRelay=
+            - AddRequestHeader=X-Gateway-Source, api-gateway
+
+        - id: inscripciones-health
+          uri: ${INSCRIPCIONES_SERVICE_URL:http://localhost:8080}
+          predicates:
+            - Path=/services/inscripciones/health
+          filters:
+            - RewritePath=/services/inscripciones/health, /actuator/health
+
+        - id: inscripciones-swagger
+          uri: ${INSCRIPCIONES_SERVICE_URL:http://localhost:8080}
+          predicates:
+            - Path=/services/inscripciones/swagger-ui/**, /services/inscripciones/api-docs/**
+          filters:
+            - RewritePath=/services/inscripciones/(?<segment>.*), /${segment}
+
+      httpclient:
+        connect-timeout: 5000
+        response-timeout: 30s
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, info, gateway
+  endpoint:
+    health:
+      show-details: always
