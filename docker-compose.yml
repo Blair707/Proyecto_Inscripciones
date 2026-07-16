@@ -1,0 +1,104 @@
+version: '3.8'
+
+services:
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-cursos_user}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-cursos_pass}
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+
+  inscripciones-service:
+    build:
+      context: ./inscripciones-service
+    container_name: inscripciones-service
+    ports:
+      - "8080:8080"
+    environment:
+      ORACLE_TNS_ALIAS: inscripcionesdb_high
+      ORACLE_WALLET_PATH: /app/oracle-wallet
+      ORACLE_DB_USER: INSCRIPCIONES_USER
+      ORACLE_DB_PASSWORD: ${ORACLE_INSCRIPCIONES_PASSWORD}
+      AZURE_CLIENT_SECRET: ${AZURE_CLIENT_SECRET}
+      AWS_ACCESS_KEY: ${AWS_ACCESS_KEY}
+      AWS_SECRET_KEY: ${AWS_SECRET_KEY}
+    volumes:
+      - ./oracle-wallet:/app/oracle-wallet:ro
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  examenes-service:
+    build:
+      context: ./examenes-service
+    container_name: examenes-service
+    ports:
+      - "8081:8081"
+    environment:
+      ORACLE_TNS_ALIAS: inscripcionesdb_high
+      ORACLE_WALLET_PATH: /app/oracle-wallet
+      ORACLE_DB_USER: EXAMENES_USER
+      ORACLE_DB_PASSWORD: ${ORACLE_EXAMENES_PASSWORD}
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USER: ${RABBITMQ_USER:-cursos_user}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-cursos_pass}
+    volumes:
+      - ./oracle-wallet:/app/oracle-wallet:ro
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8081/actuator/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  bff-service:
+    build:
+      context: ./bff-service
+    container_name: bff-service
+    ports:
+      - "8082:8082"
+    environment:
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USER: ${RABBITMQ_USER:-cursos_user}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-cursos_pass}
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8082/actuator/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  api-gateway:
+    build:
+      context: ./api-gateway
+    container_name: api-gateway
+    ports:
+      - "8090:8090"
+    environment:
+      INSCRIPCIONES_SERVICE_URL: http://inscripciones-service:8080
+      EXAMENES_SERVICE_URL: http://examenes-service:8081
+      BFF_SERVICE_URL: http://bff-service:8082
+    depends_on:
+      inscripciones-service:
+        condition: service_healthy
+      examenes-service:
+        condition: service_healthy
+      bff-service:
+        condition: service_healthy
